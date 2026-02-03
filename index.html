@@ -137,30 +137,80 @@
 
     <script>
         function actualizarInterfaz(movs) {
-            const lista = document.getElementById('tabla-cuerpo');
-            let tin = 0, tout = 0, total = 0;
-            const mesActual = new Date().getMonth() + 1;
-            
-            lista.innerHTML = '';
-            movs.forEach(m => {
-                if(m.tipo === 'Entrada') {
-                    total += m.monto;
-                    if(m.mes === mesActual) tin += m.monto;
-                } else {
-                    total -= m.monto;
-                    if(m.mes === mesActual) tout += m.monto;
-                }
+    const lista = document.getElementById('tabla-cuerpo');
+    const contenedorResumen = document.getElementById('vista-app'); // Para insertar el nuevo reporte
+    let tin = 0, tout = 0, total = 0;
+    const mesActual = new Date().getMonth() + 1;
+    
+    // Objeto para acumular gastos por categoría
+    const gastosPorCategoria = {};
 
-                lista.innerHTML += `<tr>
-                    <td>${m.fecha}</td>
-                    <td>${m.concepto} <br><small>${m.categoria}</small></td>
-                    <td class="${m.tipo === 'Entrada' ? 'tipo-entrada' : 'tipo-salida'}">$${m.monto.toFixed(2)}</td>
-                </tr>`;
-            });
-            document.getElementById('res-in').innerText = `Entradas: $${tin.toFixed(2)}`;
-            document.getElementById('res-out').innerText = `Salidas: $${tout.toFixed(2)}`;
-            document.getElementById('saldo-total').innerText = `$${total.toFixed(2)}`;
+    lista.innerHTML = '';
+    movs.forEach(m => {
+        const monto = parseFloat(m.monto);
+        
+        // Cálculo de totales globales
+        if(m.tipo === 'Entrada') {
+            total += monto;
+            if(m.mes === mesActual) tin += monto;
+        } else {
+            total -= monto;
+            if(m.mes === mesActual) {
+                tout += monto;
+                // Agrupar gastos del mes por categoría
+                const cat = m.categoria || "Sin categoría";
+                gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + monto;
+            }
         }
-    </script>
-</body>
-</html>
+
+        // Dibujar tabla principal
+        lista.innerHTML += `<tr>
+            <td>${m.fecha}</td>
+            <td>${m.concepto} <br><small style="color:gray">${m.categoria}</small></td>
+            <td class="${m.tipo === 'Entrada' ? 'tipo-entrada' : 'tipo-salida'}">
+                ${m.tipo === 'Entrada' ? '+' : '-'}$${m.monto.toFixed(2)}
+            </td>
+        </tr>`;
+    });
+
+    // Actualizar números principales
+    document.getElementById('res-in').innerText = `Entradas: $${tin.toFixed(2)}`;
+    document.getElementById('res-out').innerText = `Salidas: $${tout.toFixed(2)}`;
+    document.getElementById('saldo-total').innerText = `$${total.toFixed(2)}`;
+
+    // --- NUEVO: Generar tabla de categorías ---
+    renderizarDesgloseCategorias(gastosPorCategoria);
+}
+
+function renderizarDesgloseCategorias(categorias) {
+    // Buscamos si ya existe la tabla de categorías, si no, la creamos
+    let divCat = document.getElementById('desglose-categorias');
+    if (!divCat) {
+        divCat = document.createElement('div');
+        divCat.id = 'desglose-categorias';
+        divCat.className = 'card';
+        divCat.innerHTML = '<h3>Gastos por Categoría (Este Mes)</h3><div id="lista-cats"></div>';
+        // Insertar después del grid de resumen
+        document.querySelector('.grid').after(divCat);
+    }
+
+    const listaCats = document.getElementById('lista-cats');
+    listaCats.innerHTML = '';
+    
+    // Ordenar categorías de mayor a menor gasto
+    const ordenadas = Object.entries(categorias).sort((a, b) => b[1] - a[1]);
+
+    if (ordenadas.length === 0) {
+        listaCats.innerHTML = '<p style="color:gray">No hay gastos registrados este mes.</p>';
+        return;
+    }
+
+    ordenadas.forEach(([nombre, monto]) => {
+        listaCats.innerHTML += `
+            <div style="display:flex; justify-content:space-between; padding: 5px 0; border-bottom: 1px solid #eee;">
+                <span>${nombre}</span>
+                <span style="font-weight:bold">$${monto.toFixed(2)}</span>
+            </div>
+        `;
+    });
+}
