@@ -8,16 +8,16 @@
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // --- PEGA TUS CREDENCIALES AQUÍ ---
+        // --- CREDENCIALES ---
         const firebaseConfig = {
-  apiKey: "AIzaSyCY3MpqeibDMdrRFMynB6FaIZ0UUcmqGYQ",
-  authDomain: "gestor-de-finanzas-554ac.firebaseapp.com",
-  projectId: "gestor-de-finanzas-554ac",
-  storageBucket: "gestor-de-finanzas-554ac.firebasestorage.app",
-  messagingSenderId: "69922054305",
-  appId: "1:69922054305:web:bcf7129aa34af3f4df10e0",
-  measurementId: "G-Y4Z6D95ZPJ"
-};
+            apiKey: "AIzaSyCY3MpqeibDMdrRFMynB6FaIZ0UUcmqGYQ",
+            authDomain: "gestor-de-finanzas-554ac.firebaseapp.com",
+            projectId: "gestor-de-finanzas-554ac",
+            storageBucket: "gestor-de-finanzas-554ac.firebasestorage.app",
+            messagingSenderId: "69922054305",
+            appId: "1:69922054305:web:bcf7129aa34af3f4df10e0",
+            measurementId: "G-Y4Z6D95ZPJ"
+        };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -55,42 +55,119 @@
             const q = query(collection(db, "movimientos"), where("userId", "==", uid), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
                 const movimientos = snapshot.docs.map(doc => doc.data());
-                actualizarInterfaz(movimientos);
+                actualizarInterfaz(movimientos); // Ahora sí la encontrará
             });
         }
 
         window.registrarMovimiento = async () => {
             const monto = parseFloat(document.getElementById('monto').value);
             const concepto = document.getElementById('concepto').value;
+            const categoria = document.getElementById('categoria').value || "General";
+            
             if (!concepto || isNaN(monto)) return alert("Datos inválidos");
 
-            await addDoc(collection(db, "movimientos"), {
-                userId: auth.currentUser.uid,
-                tipo: document.getElementById('tipo').value,
-                monto: monto,
-                concepto: concepto,
-                categoria: document.getElementById('categoria').value,
-                fecha: new Date().toISOString().split('T')[0],
-                timestamp: new Date(),
-                mes: new Date().getMonth() + 1
-            });
-            document.getElementById('monto').value = '';
-            document.getElementById('concepto').value = '';
+            try {
+                await addDoc(collection(db, "movimientos"), {
+                    userId: auth.currentUser.uid,
+                    tipo: document.getElementById('tipo').value,
+                    monto: monto,
+                    concepto: concepto,
+                    categoria: categoria,
+                    fecha: new Date().toISOString().split('T')[0],
+                    timestamp: new Date(),
+                    mes: new Date().getMonth() + 1
+                });
+                document.getElementById('monto').value = '';
+                document.getElementById('concepto').value = '';
+                document.getElementById('categoria').value = '';
+            } catch (e) {
+                alert("Error al guardar: " + e.message);
+            }
         };
+
+        // --- FUNCIONES DE INTERFAZ (Movidas dentro del módulo) ---
+        function actualizarInterfaz(movs) {
+            const lista = document.getElementById('tabla-cuerpo');
+            let tin = 0, tout = 0, total = 0;
+            const mesActual = new Date().getMonth() + 1;
+            const gastosPorCategoria = {};
+
+            lista.innerHTML = '';
+            movs.forEach(m => {
+                const monto = parseFloat(m.monto);
+                
+                if(m.tipo === 'Entrada') {
+                    total += monto;
+                    if(m.mes === mesActual) tin += monto;
+                } else {
+                    total -= monto;
+                    if(m.mes === mesActual) {
+                        tout += monto;
+                        const cat = m.categoria || "Sin categoría";
+                        gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + monto;
+                    }
+                }
+
+                lista.innerHTML += `<tr>
+                    <td>${m.fecha}</td>
+                    <td>${m.concepto} <br><small style="color:gray">${m.categoria}</small></td>
+                    <td class="${m.tipo === 'Entrada' ? 'tipo-entrada' : 'tipo-salida'}">
+                        ${m.tipo === 'Entrada' ? '+' : '-'}$${monto.toFixed(2)}
+                    </td>
+                </tr>`;
+            });
+
+            document.getElementById('res-in').innerText = `Entradas: $${tin.toFixed(2)}`;
+            document.getElementById('res-out').innerText = `Salidas: $${tout.toFixed(2)}`;
+            document.getElementById('saldo-total').innerText = `$${total.toFixed(2)}`;
+
+            renderizarDesgloseCategorias(gastosPorCategoria);
+        }
+
+        function renderizarDesgloseCategorias(categorias) {
+            let divCat = document.getElementById('desglose-categorias');
+            if (!divCat) {
+                divCat = document.createElement('div');
+                divCat.id = 'desglose-categorias';
+                divCat.className = 'card';
+                divCat.innerHTML = '<h3>Gastos por Categoría (Este Mes)</h3><div id="lista-cats"></div>';
+                document.querySelector('.grid').after(divCat);
+            }
+
+            const listaCats = document.getElementById('lista-cats');
+            listaCats.innerHTML = '';
+            const ordenadas = Object.entries(categorias).sort((a, b) => b[1] - a[1]);
+
+            if (ordenadas.length === 0) {
+                listaCats.innerHTML = '<p style="color:gray">No hay gastos registrados este mes.</p>';
+                return;
+            }
+
+            ordenadas.forEach(([nombre, monto]) => {
+                listaCats.innerHTML += `
+                    <div style="display:flex; justify-content:space-between; padding: 5px 0; border-bottom: 1px solid #eee;">
+                        <span>${nombre}</span>
+                        <span style="font-weight:bold">$${monto.toFixed(2)}</span>
+                    </div>`;
+            });
+        }
     </script>
+    
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
         .container { width: 100%; max-width: 800px; }
-        .card { background: white; padding: 25px; border-radius: 12px; shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #ddd; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #ddd; }
         input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { background: #1a73e8; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button { background: #1a73e8; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #1557b0; }
         .btn-logout { background: #5f6368; width: auto; padding: 5px 15px; }
-        .grid { display: flex; gap: 20px; }
-        .resumen { background: #202124; color: white; flex: 1; }
-        .tipo-entrada { color: #34a853; }
-        .tipo-salida { color: #ea4335; }
+        .grid { display: flex; gap: 20px; flex-wrap: wrap; }
+        .resumen { background: #202124; color: white; flex: 1; min-width: 250px; }
+        .tipo-entrada { color: #34a853; font-weight: bold; }
+        .tipo-salida { color: #ea4335; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; background: white; }
         th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        @media (max-width: 600px) { .grid { flex-direction: column; } }
     </style>
 </head>
 <body>
@@ -109,108 +186,42 @@
             </div>
 
             <div class="grid">
-                <div class="card" style="flex: 1.5;">
-                    <label>Tipo</label>
-                    <select id="tipo"><option value="Entrada">Entrada (+)</option><option value="Salida">Salida (-)</option></select>
+                <div class="card" style="flex: 1.5; min-width: 300px;">
+                    <label>Tipo de Movimiento</label>
+                    <select id="tipo">
+                        <option value="Salida">Salida (-)</option>
+                        <option value="Entrada">Entrada (+)</option>
+                    </select>
                     <input type="number" id="monto" placeholder="Monto $">
-                    <input type="text" id="concepto" placeholder="Concepto">
-                    <input type="text" id="categoria" placeholder="Categoría">
-                    <button onclick="registrarMovimiento()">Guardar</button>
+                    <input type="text" id="concepto" placeholder="Concepto (ej. Supermercado)">
+                    <input type="text" id="categoria" placeholder="Categoría (ej. Comida)">
+                    <button onclick="registrarMovimiento()">Guardar en la Nube</button>
                 </div>
 
                 <div class="card resumen">
-                    <h3>Este Mes</h3>
-                    <p id="res-in">Entradas: $0</p>
-                    <p id="res-out">Salidas: $0</p>
-                    <hr>
+                    <h3>Resumen Mensual</h3>
+                    <p id="res-in">Entradas: $0.00</p>
+                    <p id="res-out">Salidas: $0.00</p>
+                    <hr style="border-color: #444;">
                     <p>SALDO GLOBAL</p>
-                    <h2 id="saldo-total">$0.00</h2>
+                    <h2 id="saldo-total" style="margin: 0; color: #8ab4f8;">$0.00</h2>
                 </div>
             </div>
 
-            <table class="card">
-                <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th></tr></thead>
-                <tbody id="tabla-cuerpo"></tbody>
-            </table>
+            <div class="card" style="overflow-x: auto;">
+                <h3>Historial de Movimientos</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Concepto</th>
+                            <th>Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cuerpo"></tbody>
+                </table>
+            </div>
         </div>
     </div>
-
-    <script>
-        function actualizarInterfaz(movs) {
-    const lista = document.getElementById('tabla-cuerpo');
-    const contenedorResumen = document.getElementById('vista-app'); // Para insertar el nuevo reporte
-    let tin = 0, tout = 0, total = 0;
-    const mesActual = new Date().getMonth() + 1;
-    
-    // Objeto para acumular gastos por categoría
-    const gastosPorCategoria = {};
-
-    lista.innerHTML = '';
-    movs.forEach(m => {
-        const monto = parseFloat(m.monto);
-        
-        // Cálculo de totales globales
-        if(m.tipo === 'Entrada') {
-            total += monto;
-            if(m.mes === mesActual) tin += monto;
-        } else {
-            total -= monto;
-            if(m.mes === mesActual) {
-                tout += monto;
-                // Agrupar gastos del mes por categoría
-                const cat = m.categoria || "Sin categoría";
-                gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + monto;
-            }
-        }
-
-        // Dibujar tabla principal
-        lista.innerHTML += `<tr>
-            <td>${m.fecha}</td>
-            <td>${m.concepto} <br><small style="color:gray">${m.categoria}</small></td>
-            <td class="${m.tipo === 'Entrada' ? 'tipo-entrada' : 'tipo-salida'}">
-                ${m.tipo === 'Entrada' ? '+' : '-'}$${m.monto.toFixed(2)}
-            </td>
-        </tr>`;
-    });
-
-    // Actualizar números principales
-    document.getElementById('res-in').innerText = `Entradas: $${tin.toFixed(2)}`;
-    document.getElementById('res-out').innerText = `Salidas: $${tout.toFixed(2)}`;
-    document.getElementById('saldo-total').innerText = `$${total.toFixed(2)}`;
-
-    // --- NUEVO: Generar tabla de categorías ---
-    renderizarDesgloseCategorias(gastosPorCategoria);
-}
-
-function renderizarDesgloseCategorias(categorias) {
-    // Buscamos si ya existe la tabla de categorías, si no, la creamos
-    let divCat = document.getElementById('desglose-categorias');
-    if (!divCat) {
-        divCat = document.createElement('div');
-        divCat.id = 'desglose-categorias';
-        divCat.className = 'card';
-        divCat.innerHTML = '<h3>Gastos por Categoría (Este Mes)</h3><div id="lista-cats"></div>';
-        // Insertar después del grid de resumen
-        document.querySelector('.grid').after(divCat);
-    }
-
-    const listaCats = document.getElementById('lista-cats');
-    listaCats.innerHTML = '';
-    
-    // Ordenar categorías de mayor a menor gasto
-    const ordenadas = Object.entries(categorias).sort((a, b) => b[1] - a[1]);
-
-    if (ordenadas.length === 0) {
-        listaCats.innerHTML = '<p style="color:gray">No hay gastos registrados este mes.</p>';
-        return;
-    }
-
-    ordenadas.forEach(([nombre, monto]) => {
-        listaCats.innerHTML += `
-            <div style="display:flex; justify-content:space-between; padding: 5px 0; border-bottom: 1px solid #eee;">
-                <span>${nombre}</span>
-                <span style="font-weight:bold">$${monto.toFixed(2)}</span>
-            </div>
-        `;
-    });
-}
+</body>
+</html>
