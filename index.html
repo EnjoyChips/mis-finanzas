@@ -8,7 +8,6 @@
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // --- CREDENCIALES ---
         const firebaseConfig = {
             apiKey: "AIzaSyCY3MpqeibDMdrRFMynB6FaIZ0UUcmqGYQ",
             authDomain: "gestor-de-finanzas-554ac.firebaseapp.com",
@@ -23,24 +22,20 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- LÓGICA DE LOGIN ---
+        let movimientosActuales = []; // Guardamos los datos para exportar
+
         window.login = async () => {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('pass').value;
-            try {
-                await signInWithEmailAndPassword(auth, email, pass);
-            } catch (error) {
-                alert("Error de acceso: " + error.message);
-            }
+            try { await signInWithEmailAndPassword(auth, email, pass); } 
+            catch (error) { alert("Error de acceso: " + error.message); }
         };
 
         window.cerrarSesion = () => signOut(auth);
 
-        // --- CONTROL DE VISTAS Y DATOS ---
         onAuthStateChanged(auth, (user) => {
             const loginVista = document.getElementById('vista-login');
             const appVista = document.getElementById('vista-app');
-
             if (user) {
                 loginVista.style.display = 'none';
                 appVista.style.display = 'block';
@@ -54,8 +49,8 @@
         function cargarDatos(uid) {
             const q = query(collection(db, "movimientos"), where("userId", "==", uid), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
-                const movimientos = snapshot.docs.map(doc => doc.data());
-                actualizarInterfaz(movimientos); // Ahora sí la encontrará
+                movimientosActuales = snapshot.docs.map(doc => doc.data());
+                actualizarInterfaz(movimientosActuales);
             });
         }
 
@@ -63,29 +58,40 @@
             const monto = parseFloat(document.getElementById('monto').value);
             const concepto = document.getElementById('concepto').value;
             const categoria = document.getElementById('categoria').value || "General";
-            
             if (!concepto || isNaN(monto)) return alert("Datos inválidos");
 
-            try {
-                await addDoc(collection(db, "movimientos"), {
-                    userId: auth.currentUser.uid,
-                    tipo: document.getElementById('tipo').value,
-                    monto: monto,
-                    concepto: concepto,
-                    categoria: categoria,
-                    fecha: new Date().toISOString().split('T')[0],
-                    timestamp: new Date(),
-                    mes: new Date().getMonth() + 1
-                });
-                document.getElementById('monto').value = '';
-                document.getElementById('concepto').value = '';
-                document.getElementById('categoria').value = '';
-            } catch (e) {
-                alert("Error al guardar: " + e.message);
-            }
+            await addDoc(collection(db, "movimientos"), {
+                userId: auth.currentUser.uid,
+                tipo: document.getElementById('tipo').value,
+                monto: monto,
+                concepto: concepto,
+                categoria: categoria,
+                fecha: new Date().toISOString().split('T')[0],
+                timestamp: new Date(),
+                mes: new Date().getMonth() + 1
+            });
+            document.getElementById('monto').value = '';
+            document.getElementById('concepto').value = '';
         };
 
-        // --- FUNCIONES DE INTERFAZ (Movidas dentro del módulo) ---
+        // --- LÓGICA DE EXPORTACIÓN ---
+        window.exportarCSV = () => {
+            if (movimientosActuales.length === 0) return alert("No hay datos para exportar");
+            
+            let csvContent = "data:text/csv;charset=utf-8,Fecha,Concepto,Categoria,Tipo,Monto\n";
+            movimientosActuales.forEach(m => {
+                csvContent += `${m.fecha},${m.concepto},${m.categoria},${m.tipo},${m.monto}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `MisFinanzas_${new Date().toLocaleDateString()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
         function actualizarInterfaz(movs) {
             const lista = document.getElementById('tabla-cuerpo');
             let tin = 0, tout = 0, total = 0;
@@ -95,7 +101,6 @@
             lista.innerHTML = '';
             movs.forEach(m => {
                 const monto = parseFloat(m.monto);
-                
                 if(m.tipo === 'Entrada') {
                     total += monto;
                     if(m.mes === mesActual) tin += monto;
@@ -107,20 +112,12 @@
                         gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + monto;
                     }
                 }
-
-                lista.innerHTML += `<tr>
-                    <td>${m.fecha}</td>
-                    <td>${m.concepto} <br><small style="color:gray">${m.categoria}</small></td>
-                    <td class="${m.tipo === 'Entrada' ? 'tipo-entrada' : 'tipo-salida'}">
-                        ${m.tipo === 'Entrada' ? '+' : '-'}$${monto.toFixed(2)}
-                    </td>
-                </tr>`;
+                lista.innerHTML += `<tr><td>${m.fecha}</td><td>${m.concepto} <br><small>${m.categoria}</small></td><td class="${m.tipo === 'Entrada' ? 'tipo-entrada' : 'tipo-salida'}">$${monto.toFixed(2)}</td></tr>`;
             });
 
             document.getElementById('res-in').innerText = `Entradas: $${tin.toFixed(2)}`;
             document.getElementById('res-out').innerText = `Salidas: $${tout.toFixed(2)}`;
             document.getElementById('saldo-total').innerText = `$${total.toFixed(2)}`;
-
             renderizarDesgloseCategorias(gastosPorCategoria);
         }
 
@@ -130,36 +127,23 @@
                 divCat = document.createElement('div');
                 divCat.id = 'desglose-categorias';
                 divCat.className = 'card';
-                divCat.innerHTML = '<h3>Gastos por Categoría (Este Mes)</h3><div id="lista-cats"></div>';
+                divCat.innerHTML = '<h3>Gastos por Categoría (Mes)</h3><div id="lista-cats"></div>';
                 document.querySelector('.grid').after(divCat);
             }
-
             const listaCats = document.getElementById('lista-cats');
             listaCats.innerHTML = '';
-            const ordenadas = Object.entries(categorias).sort((a, b) => b[1] - a[1]);
-
-            if (ordenadas.length === 0) {
-                listaCats.innerHTML = '<p style="color:gray">No hay gastos registrados este mes.</p>';
-                return;
-            }
-
-            ordenadas.forEach(([nombre, monto]) => {
-                listaCats.innerHTML += `
-                    <div style="display:flex; justify-content:space-between; padding: 5px 0; border-bottom: 1px solid #eee;">
-                        <span>${nombre}</span>
-                        <span style="font-weight:bold">$${monto.toFixed(2)}</span>
-                    </div>`;
+            Object.entries(categorias).sort((a,b)=>b[1]-a[1]).forEach(([n, m]) => {
+                listaCats.innerHTML += `<div style="display:flex; justify-content:space-between; padding: 5px 0;"><span>${n}</span><b>$${m.toFixed(2)}</b></div>`;
             });
         }
     </script>
-    
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
         .container { width: 100%; max-width: 800px; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #ddd; }
         input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { background: #1a73e8; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #1557b0; }
+        button { background: #1a73e8; color: white; border: none; font-weight: bold; cursor: pointer; }
+        .btn-excel { background: #1d6f42; margin-top: 15px; } /* Color estilo Excel */
         .btn-logout { background: #5f6368; width: auto; padding: 5px 15px; }
         .grid { display: flex; gap: 20px; flex-wrap: wrap; }
         .resumen { background: #202124; color: white; flex: 1; min-width: 250px; }
@@ -167,57 +151,47 @@
         .tipo-salida { color: #ea4335; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; background: white; }
         th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
-        @media (max-width: 600px) { .grid { flex-direction: column; } }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="vista-login" class="card" style="max-width: 400px; margin: auto;">
-            <h2 style="text-align:center">🔐 Iniciar Sesión</h2>
-            <input type="email" id="email" placeholder="Correo electrónico">
+        <div id="vista-login" class="card" style="max-width: 400px; margin: auto; display:none;">
+            <h2 style="text-align:center">🔐 Acceso</h2>
+            <input type="email" id="email" placeholder="Correo">
             <input type="password" id="pass" placeholder="Contraseña">
             <button onclick="login()">Entrar</button>
         </div>
 
         <div id="vista-app" style="display:none">
             <div style="display:flex; justify-content: space-between; align-items: center;">
-                <h2>📊 Mis Finanzas Cloud</h2>
+                <h2>📊 Finanzas Cloud</h2>
                 <button class="btn-logout" onclick="cerrarSesion()">Salir</button>
             </div>
 
             <div class="grid">
                 <div class="card" style="flex: 1.5; min-width: 300px;">
-                    <label>Tipo de Movimiento</label>
-                    <select id="tipo">
-                        <option value="Salida">Salida (-)</option>
-                        <option value="Entrada">Entrada (+)</option>
-                    </select>
+                    <select id="tipo"><option value="Salida">Salida (-)</option><option value="Entrada">Entrada (+)</option></select>
                     <input type="number" id="monto" placeholder="Monto $">
-                    <input type="text" id="concepto" placeholder="Concepto (ej. Supermercado)">
-                    <input type="text" id="categoria" placeholder="Categoría (ej. Comida)">
-                    <button onclick="registrarMovimiento()">Guardar en la Nube</button>
+                    <input type="text" id="concepto" placeholder="Concepto">
+                    <input type="text" id="categoria" placeholder="Categoría">
+                    <button onclick="registrarMovimiento()">Guardar</button>
+                    <button class="btn-excel" onclick="exportarCSV()">📥 Descargar Excel (CSV)</button>
                 </div>
 
                 <div class="card resumen">
-                    <h3>Resumen Mensual</h3>
+                    <h3>Este Mes</h3>
                     <p id="res-in">Entradas: $0.00</p>
                     <p id="res-out">Salidas: $0.00</p>
-                    <hr style="border-color: #444;">
+                    <hr>
                     <p>SALDO GLOBAL</p>
-                    <h2 id="saldo-total" style="margin: 0; color: #8ab4f8;">$0.00</h2>
+                    <h2 id="saldo-total" style="color: #8ab4f8;">$0.00</h2>
                 </div>
             </div>
 
-            <div class="card" style="overflow-x: auto;">
-                <h3>Historial de Movimientos</h3>
+            <div class="card">
+                <h3>Historial</h3>
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Concepto</th>
-                            <th>Monto</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th></tr></thead>
                     <tbody id="tabla-cuerpo"></tbody>
                 </table>
             </div>
