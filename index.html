@@ -3,6 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title>Finanzas Privadas en la Nube</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="MisFinanzas">
+    <meta name="theme-color" content="#1a73e8">
+    
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5501/5501375.png">
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/5501/5501375.png">
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -22,7 +31,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let movimientosActuales = []; // Guardamos los datos para exportar
+        let movimientosActuales = [];
 
         window.login = async () => {
             const email = document.getElementById('email').value;
@@ -72,17 +81,15 @@
             });
             document.getElementById('monto').value = '';
             document.getElementById('concepto').value = '';
+            document.getElementById('categoria').value = '';
         };
 
-        // --- LÓGICA DE EXPORTACIÓN ---
         window.exportarCSV = () => {
             if (movimientosActuales.length === 0) return alert("No hay datos para exportar");
-            
             let csvContent = "data:text/csv;charset=utf-8,Fecha,Concepto,Categoria,Tipo,Monto\n";
             movimientosActuales.forEach(m => {
                 csvContent += `${m.fecha},${m.concepto},${m.categoria},${m.tipo},${m.monto}\n`;
             });
-
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -112,7 +119,7 @@
                         gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + monto;
                     }
                 }
-                lista.innerHTML += `<tr><td>${m.fecha}</td><td>${m.concepto} <br><small>${m.categoria}</small></td><td class="${m.tipo === 'Entrada' ? 'tipo-entrada' : 'tipo-salida'}">$${monto.toFixed(2)}</td></tr>`;
+                lista.innerHTML += `<tr><td>${m.fecha}</td><td>${m.concepto} <br><small style="color:gray">${m.categoria}</small></td><td class="${m.tipo === 'Entrada' ? 'tipo-entrada' : 'tipo-salida'}">$${monto.toFixed(2)}</td></tr>`;
             });
 
             document.getElementById('res-in').innerText = `Entradas: $${tin.toFixed(2)}`;
@@ -133,30 +140,31 @@
             const listaCats = document.getElementById('lista-cats');
             listaCats.innerHTML = '';
             Object.entries(categorias).sort((a,b)=>b[1]-a[1]).forEach(([n, m]) => {
-                listaCats.innerHTML += `<div style="display:flex; justify-content:space-between; padding: 5px 0;"><span>${n}</span><b>$${m.toFixed(2)}</b></div>`;
+                listaCats.innerHTML += `<div style="display:flex; justify-content:space-between; padding: 5px 0; border-bottom: 1px solid #eee;"><span>${n}</span><b>$${m.toFixed(2)}</b></div>`;
             });
         }
     </script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
         .container { width: 100%; max-width: 800px; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #ddd; }
         input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
         button { background: #1a73e8; color: white; border: none; font-weight: bold; cursor: pointer; }
-        .btn-excel { background: #1d6f42; margin-top: 15px; } /* Color estilo Excel */
-        .btn-logout { background: #5f6368; width: auto; padding: 5px 15px; }
+        .btn-excel { background: #1d6f42; margin-top: 10px; }
+        .btn-logout { background: #5f6368; width: auto; padding: 5px 15px; font-size: 0.8em; }
         .grid { display: flex; gap: 20px; flex-wrap: wrap; }
         .resumen { background: #202124; color: white; flex: 1; min-width: 250px; }
         .tipo-entrada { color: #34a853; font-weight: bold; }
         .tipo-salida { color: #ea4335; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; background: white; }
+        table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        @media (max-width: 600px) { .grid { flex-direction: column; } }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="vista-login" class="card" style="max-width: 400px; margin: auto; display:none;">
-            <h2 style="text-align:center">🔐 Acceso</h2>
+        <div id="vista-login" class="card" style="max-width: 400px; margin: 40px auto; display:none;">
+            <h2 style="text-align:center">🔐 Acceso Privado</h2>
             <input type="email" id="email" placeholder="Correo">
             <input type="password" id="pass" placeholder="Contraseña">
             <button onclick="login()">Entrar</button>
@@ -170,28 +178,32 @@
 
             <div class="grid">
                 <div class="card" style="flex: 1.5; min-width: 300px;">
-                    <select id="tipo"><option value="Salida">Salida (-)</option><option value="Entrada">Entrada (+)</option></select>
+                    <label>Nuevo Movimiento</label>
+                    <select id="tipo">
+                        <option value="Salida">Salida (-)</option>
+                        <option value="Entrada">Entrada (+)</option>
+                    </select>
                     <input type="number" id="monto" placeholder="Monto $">
                     <input type="text" id="concepto" placeholder="Concepto">
                     <input type="text" id="categoria" placeholder="Categoría">
                     <button onclick="registrarMovimiento()">Guardar</button>
-                    <button class="btn-excel" onclick="exportarCSV()">📥 Descargar Excel (CSV)</button>
+                    <button class="btn-excel" onclick="exportarCSV()">📥 Exportar a Excel</button>
                 </div>
 
                 <div class="card resumen">
-                    <h3>Este Mes</h3>
+                    <h3>Resumen Mensual</h3>
                     <p id="res-in">Entradas: $0.00</p>
                     <p id="res-out">Salidas: $0.00</p>
-                    <hr>
-                    <p>SALDO GLOBAL</p>
-                    <h2 id="saldo-total" style="color: #8ab4f8;">$0.00</h2>
+                    <hr style="border-color: #444;">
+                    <p>SALDO TOTAL</p>
+                    <h2 id="saldo-total" style="color: #8ab4f8; margin: 0;">$0.00</h2>
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card" style="overflow-x: auto;">
                 <h3>Historial</h3>
                 <table>
-                    <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th></tr></thead>
+                    <thead><tr><th>Fecha</th><th>Detalle</th><th>Monto</th></tr></thead>
                     <tbody id="tabla-cuerpo"></tbody>
                 </table>
             </div>
