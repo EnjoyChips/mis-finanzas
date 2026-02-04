@@ -42,7 +42,7 @@
             transition: 0.3s; 
         }
         
-        .container { max-width: 900px; margin: auto; padding: 15px; }
+        .container { max-width: 1100px; margin: auto; padding: 15px; }
         .card { 
             background: var(--card-bg); 
             padding: 20px; 
@@ -63,14 +63,22 @@
         table { width: 100%; border-collapse: collapse; }
         td { padding: 12px 8px; border-bottom: 1px solid var(--border); }
 
+        /* --- LAYOUT DE ESCRITORIO --- */
+        .desktop-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Dos columnas */
+            gap: 20px;
+        }
+        .full-width { grid-column: span 2; } /* Historial abajo ocupando todo el ancho */
+
         .mobile-nav { display: none; }
 
-        @media (max-width: 768px), (display-mode: standalone) {
-            body { padding-bottom: 80px; }
-            .header-desktop { display: none; }
-            .card { border-radius: 12px; margin-bottom: 10px; }
+        /* --- RESPONSIVO PARA MÓVIL --- */
+        @media (max-width: 768px) {
+            .desktop-layout { display: block; } /* Quitar grid en móvil */
             .seccion-movil { display: none; }
             .seccion-movil.active { display: block; }
+            body { padding-bottom: 80px; }
             
             .mobile-nav { 
                 display: flex; position: fixed; bottom: 0; left: 0; right: 0; 
@@ -98,58 +106,60 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h3 style="margin:0">📊 Mis Finanzas</h3>
                 <div>
-                    <button id="btn-theme" onclick="toggleTheme()" style="width:auto; background:none; border:none; font-size:20px; color:var(--text-main); cursor:pointer;">🌓</button>
-                    <button onclick="cerrarSesion()" style="width:auto; padding:5px 10px; background:#666; font-size:12px;">Salir</button>
+                    <button onclick="toggleTheme()" style="width:auto; background:none; border:none; font-size:20px; color:var(--text-main); cursor:pointer;">🌓</button>
+                    <button onclick="cerrarSesion()" style="width:auto; padding:5px 10px; background:#666; font-size:12px; margin-left:10px;">Salir</button>
                 </div>
             </div>
 
-            <div id="sec-resumen" class="seccion-movil active">
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
-                    <div class="card" style="text-align:center; padding:10px;">Ingr.<br><span id="res-in" class="tipo-entrada">$0</span></div>
-                    <div class="card" style="text-align:center; padding:10px;">Gast.<br><span id="res-out" class="tipo-salida">$0</span></div>
-                    <div class="card" style="text-align:center; padding:10px; background:var(--primary); color:white; border:none;">Saldo<br><b id="saldo-total">$0</b></div>
-                </div>
-                <div class="card">
-                    <div style="height:200px;"><canvas id="miGrafica"></canvas></div>
-                    <div id="lista-categorias-texto" style="margin-top:15px; font-size:0.9em;"></div>
-                </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+                <div class="card" style="text-align:center; padding:10px; margin:0;">Ingr.<br><span id="res-in" class="tipo-entrada">$0</span></div>
+                <div class="card" style="text-align:center; padding:10px; margin:0;">Gast.<br><span id="res-out" class="tipo-salida">$0</span></div>
+                <div class="card" style="text-align:center; padding:10px; margin:0; background:var(--primary); color:white; border:none;">Saldo<br><b id="saldo-total">$0</b></div>
             </div>
 
-            <div id="sec-formulario" class="seccion-movil">
-                <div class="card">
-                    <h3 id="form-titulo">Nuevo Registro</h3>
-                    <select id="tipo"><option value="Salida">Gasto (-)</option><option value="Entrada">Ingreso (+)</option></select>
-                    <input type="number" id="monto" placeholder="Monto $">
-                    <input type="text" id="concepto" placeholder="Concepto">
-                    <input type="text" id="categoria" placeholder="Categoría">
-                    <button id="btn-guardar" onclick="guardarMovimiento()">Guardar</button>
-                    <button onclick="exportarCSV()" style="background:#1d6f42; margin-top:10px;">📥 Excel</button>
+            <div class="desktop-layout">
+                
+                <div id="sec-formulario" class="seccion-movil">
+                    <div class="card">
+                        <h3 id="form-titulo" style="margin-top:0">Nuevo Registro</h3>
+                        <select id="tipo"><option value="Salida">Gasto (-)</option><option value="Entrada">Ingreso (+)</option></select>
+                        <input type="number" id="monto" placeholder="Monto $">
+                        <input type="text" id="concepto" placeholder="Concepto">
+                        <input type="text" id="categoria" placeholder="Categoría">
+                        <button id="btn-guardar" onclick="guardarMovimiento()">Guardar</button>
+                        <button onclick="exportarCSV()" style="background:#1d6f42; margin-top:10px;">📥 Excel</button>
+                    </div>
                 </div>
-            </div>
 
-            <div id="sec-lista" class="seccion-movil">
-                <div class="card">
-                    <h3>Movimientos</h3>
-                    <table>
-                        <tbody id="tabla-cuerpo"></tbody>
-                    </table>
+                <div id="sec-resumen" class="seccion-movil active">
+                    <div class="card">
+                        <h3 style="margin-top:0">Gastos por Categoría</h3>
+                        <div style="height:220px;"><canvas id="miGrafica"></canvas></div>
+                        <div id="lista-categorias-texto" style="margin-top:15px; font-size:0.9em; max-height: 150px; overflow-y: auto;"></div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    <nav class="mobile-nav" id="mobile-nav" style="display:none;">
+                <div id="sec-lista" class="seccion-movil full-width">
+                    <div class="card">
+                        <h3 style="margin-top:0">Historial de Movimientos</h3>
+                        <table>
+                            <tbody id="tabla-cuerpo"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div> </div> </div> <nav class="mobile-nav" id="mobile-nav" style="display:none;">
         <button class="nav-btn active" onclick="navegar('resumen', this)"><b>🏠</b>Inicio</button>
         <button class="nav-btn" onclick="navegar('formulario', this)"><b>➕</b>Nuevo</button>
         <button class="nav-btn" onclick="navegar('lista', this)"><b>📋</b>Lista</button>
     </nav>
 
     <script type="module">
+        // [TU CÓDIGO DE FIREBASE Y LÓGICA SE MANTIENE IGUAL]
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, where, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Configuración Firebase (la misma que ya tenías)
         const firebaseConfig = {
             apiKey: "AIzaSyCY3MpqeibDMdrRFMynB6FaIZ0UUcmqGYQ",
             authDomain: "gestor-de-finanzas-554ac.firebaseapp.com",
@@ -168,15 +178,14 @@
         let idEdicion = null;
         let ultimasCategorias = {};
 
-        // --- NAVEGACIÓN ---
         window.navegar = (id, btn) => {
+            if(window.innerWidth > 768) return; // No navegar en escritorio
             document.querySelectorAll('.seccion-movil').forEach(s => s.classList.remove('active'));
             document.getElementById('sec-' + id).classList.add('active');
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             if(btn) btn.classList.add('active');
         };
 
-        // --- MODO OSCURO ---
         window.toggleTheme = () => {
             const current = document.body.getAttribute('data-theme');
             const target = current === 'dark' ? 'light' : 'dark';
@@ -188,7 +197,6 @@
         const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.body.setAttribute('data-theme', savedTheme);
 
-        // --- AUTH ---
         window.login = async () => {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('pass').value;
@@ -211,7 +219,6 @@
             }
         });
 
-        // --- FIREBASE OPS ---
         function cargarDatos(uid) {
             const q = query(collection(db, "movimientos"), where("userId", "==", uid), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
@@ -246,6 +253,7 @@
             }
             document.getElementById('monto').value = '';
             document.getElementById('concepto').value = '';
+            document.getElementById('categoria').value = '';
             if(window.innerWidth <= 768) navegar('resumen', document.querySelector('.nav-btn'));
         };
 
@@ -259,7 +267,7 @@
             document.getElementById('btn-guardar').innerText = "Actualizar";
             document.getElementById('btn-guardar').style.background = "#f39c12";
             document.getElementById('form-titulo').innerText = "Editando...";
-            navegar('formulario', document.querySelectorAll('.nav-btn')[1]);
+            if(window.innerWidth <= 768) navegar('formulario', document.querySelectorAll('.nav-btn')[1]);
         };
 
         window.borrarMovimiento = async (id) => {
@@ -269,7 +277,12 @@
         window.exportarCSV = () => {
             let csv = "Fecha,Concepto,Categoria,Tipo,Monto\n";
             movimientosActuales.forEach(m => csv += `${m.fecha},${m.concepto},${m.categoria},${m.tipo},${m.monto}\n`);
-            window.open("data:text/csv;charset=utf-8," + encodeURI(csv));
+            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csv);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "finanzas.csv");
+            document.body.appendChild(link);
+            link.click();
         };
 
         function actualizarInterfaz(movs) {
@@ -315,7 +328,9 @@
         }
 
         function actualizarGrafica(data) {
-            const ctx = document.getElementById('miGrafica').getContext('2d');
+            const canvas = document.getElementById('miGrafica');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
             const isDark = document.body.getAttribute('data-theme') === 'dark';
             if (miGrafica) miGrafica.destroy();
             miGrafica = new Chart(ctx, {
