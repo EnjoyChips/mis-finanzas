@@ -1,0 +1,17 @@
+{
+  "name": "Mis Finanzas Pro",
+  "short_name": "Finanzas",
+  "description": "Gestor de finanzas personales en la nube con modo oscuro.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#1a73e8",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/5501/5501375.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

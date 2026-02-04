@@ -2,29 +2,161 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Finanzas Privadas en la Nube</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Finanzas Pro PWA</title>
+    
+    <link rel="manifest" href="manifest.json">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="MisFinanzas">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a73e8">
     <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/5501/5501375.png">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-sec: #666666;
+            --border: #dddddd;
+            --nav-bg: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-sec: #b0b0b0;
+            --border: #333333;
+            --nav-bg: #1e1e1e;
+        }
+
+        body { 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: var(--bg); 
+            color: var(--text-main);
+            margin: 0; 
+            transition: 0.3s; 
+        }
+        
+        .container { max-width: 900px; margin: auto; padding: 15px; }
+        .card { 
+            background: var(--card-bg); 
+            padding: 20px; 
+            border-radius: 15px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        input, select, button { 
+            width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; 
+            border: 1px solid var(--border); font-size: 16px; box-sizing: border-box;
+            background: var(--card-bg); color: var(--text-main);
+        }
+        button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; }
+        
+        .tipo-entrada { color: #2ecc71; } .tipo-salida { color: #ff5252; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 12px 8px; border-bottom: 1px solid var(--border); }
+
+        .mobile-nav { display: none; }
+
+        @media (max-width: 768px), (display-mode: standalone) {
+            body { padding-bottom: 80px; }
+            .header-desktop { display: none; }
+            .card { border-radius: 12px; margin-bottom: 10px; }
+            .seccion-movil { display: none; }
+            .seccion-movil.active { display: block; }
+            
+            .mobile-nav { 
+                display: flex; position: fixed; bottom: 0; left: 0; right: 0; 
+                background: var(--nav-bg); border-top: 1px solid var(--border); height: 70px; 
+                justify-content: space-around; align-items: center; z-index: 100;
+            }
+            .nav-btn { background: none; color: var(--text-sec); font-size: 11px; border: none; width: auto; }
+            .nav-btn.active { color: var(--primary); }
+            .nav-btn b { font-size: 20px; display: block; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="vista-login" class="card" style="max-width: 400px; margin: 50px auto; display:none;">
+            <h2 style="text-align:center">🔐 Acceso</h2>
+            <input type="email" id="email" placeholder="Correo">
+            <input type="password" id="pass" placeholder="Contraseña">
+            <button onclick="login()">Entrar</button>
+        </div>
+
+        <div id="vista-app" style="display:none">
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="margin:0">📊 Mis Finanzas</h3>
+                <div>
+                    <button id="btn-theme" onclick="toggleTheme()" style="width:auto; background:none; border:none; font-size:20px; color:var(--text-main); cursor:pointer;">🌓</button>
+                    <button onclick="cerrarSesion()" style="width:auto; padding:5px 10px; background:#666; font-size:12px;">Salir</button>
+                </div>
+            </div>
+
+            <div id="sec-resumen" class="seccion-movil active">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+                    <div class="card" style="text-align:center; padding:10px;">Ingr.<br><span id="res-in" class="tipo-entrada">$0</span></div>
+                    <div class="card" style="text-align:center; padding:10px;">Gast.<br><span id="res-out" class="tipo-salida">$0</span></div>
+                    <div class="card" style="text-align:center; padding:10px; background:var(--primary); color:white; border:none;">Saldo<br><b id="saldo-total">$0</b></div>
+                </div>
+                <div class="card">
+                    <div style="height:200px;"><canvas id="miGrafica"></canvas></div>
+                    <div id="lista-categorias-texto" style="margin-top:15px; font-size:0.9em;"></div>
+                </div>
+            </div>
+
+            <div id="sec-formulario" class="seccion-movil">
+                <div class="card">
+                    <h3 id="form-titulo">Nuevo Registro</h3>
+                    <select id="tipo"><option value="Salida">Gasto (-)</option><option value="Entrada">Ingreso (+)</option></select>
+                    <input type="number" id="monto" placeholder="Monto $">
+                    <input type="text" id="concepto" placeholder="Concepto">
+                    <input type="text" id="categoria" placeholder="Categoría">
+                    <button id="btn-guardar" onclick="guardarMovimiento()">Guardar</button>
+                    <button onclick="exportarCSV()" style="background:#1d6f42; margin-top:10px;">📥 Excel</button>
+                </div>
+            </div>
+
+            <div id="sec-lista" class="seccion-movil">
+                <div class="card">
+                    <h3>Movimientos</h3>
+                    <table>
+                        <tbody id="tabla-cuerpo"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="mobile-nav" id="mobile-nav" style="display:none;">
+        <button class="nav-btn active" onclick="navegar('resumen', this)"><b>🏠</b>Inicio</button>
+        <button class="nav-btn" onclick="navegar('formulario', this)"><b>➕</b>Nuevo</button>
+        <button class="nav-btn" onclick="navegar('lista', this)"><b>📋</b>Lista</button>
+    </nav>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, where, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // Configuración Firebase (la misma que ya tenías)
         const firebaseConfig = {
             apiKey: "AIzaSyCY3MpqeibDMdrRFMynB6FaIZ0UUcmqGYQ",
             authDomain: "gestor-de-finanzas-554ac.firebaseapp.com",
             projectId: "gestor-de-finanzas-554ac",
             storageBucket: "gestor-de-finanzas-554ac.firebasestorage.app",
             messagingSenderId: "69922054305",
-            appId: "1:69922054305:web:bcf7129aa34af3f4df10e0",
-            measurementId: "G-Y4Z6D95ZPJ"
+            appId: "1:69922054305:web:bcf7129aa34af3f4df10e0"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -33,8 +165,30 @@
 
         let movimientosActuales = [];
         let miGrafica = null;
-        let idEdicion = null; // Variable para rastrear si estamos editando
+        let idEdicion = null;
+        let ultimasCategorias = {};
 
+        // --- NAVEGACIÓN ---
+        window.navegar = (id, btn) => {
+            document.querySelectorAll('.seccion-movil').forEach(s => s.classList.remove('active'));
+            document.getElementById('sec-' + id).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+        };
+
+        // --- MODO OSCURO ---
+        window.toggleTheme = () => {
+            const current = document.body.getAttribute('data-theme');
+            const target = current === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', target);
+            localStorage.setItem('theme', target);
+            if(miGrafica) actualizarGrafica(ultimasCategorias);
+        };
+
+        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.body.setAttribute('data-theme', savedTheme);
+
+        // --- AUTH ---
         window.login = async () => {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('pass').value;
@@ -48,13 +202,16 @@
             if (user) {
                 document.getElementById('vista-login').style.display = 'none';
                 document.getElementById('vista-app').style.display = 'block';
+                if(window.innerWidth <= 768) document.getElementById('mobile-nav').style.display = 'flex';
                 cargarDatos(user.uid);
             } else {
                 document.getElementById('vista-login').style.display = 'block';
                 document.getElementById('vista-app').style.display = 'none';
+                document.getElementById('mobile-nav').style.display = 'none';
             }
         });
 
+        // --- FIREBASE OPS ---
         function cargarDatos(uid) {
             const q = query(collection(db, "movimientos"), where("userId", "==", uid), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
@@ -63,30 +220,22 @@
             });
         }
 
-        // --- FUNCIÓN PARA REGISTRAR O ACTUALIZAR ---
         window.guardarMovimiento = async () => {
             const monto = parseFloat(document.getElementById('monto').value);
             const concepto = document.getElementById('concepto').value;
             const categoria = document.getElementById('categoria').value || "General";
             const tipo = document.getElementById('tipo').value;
-            
             if (!concepto || isNaN(monto)) return alert("Datos inválidos");
 
-            const datos = {
-                tipo: tipo,
-                monto: monto,
-                concepto: concepto,
-                categoria: categoria.trim(),
-            };
+            const datos = { tipo, monto, concepto, categoria: categoria.trim() };
 
             if (idEdicion) {
-                // Actualizar existente
                 await updateDoc(doc(db, "movimientos", idEdicion), datos);
                 idEdicion = null;
                 document.getElementById('btn-guardar').innerText = "Guardar";
-                document.getElementById('btn-guardar').style.background = "#1a73e8";
+                document.getElementById('btn-guardar').style.background = "var(--primary)";
+                document.getElementById('form-titulo').innerText = "Nuevo Registro";
             } else {
-                // Crear nuevo
                 await addDoc(collection(db, "movimientos"), {
                     ...datos,
                     userId: auth.currentUser.uid,
@@ -95,57 +244,43 @@
                     mes: new Date().getMonth() + 1
                 });
             }
-
-            // Limpiar campos
             document.getElementById('monto').value = '';
             document.getElementById('concepto').value = '';
-            document.getElementById('categoria').value = '';
+            if(window.innerWidth <= 768) navegar('resumen', document.querySelector('.nav-btn'));
         };
 
-        // --- PREPARAR EDICIÓN ---
         window.prepararEdicion = (id) => {
             const mov = movimientosActuales.find(m => m.id === id);
-            if (!mov) return;
-
             idEdicion = id;
             document.getElementById('monto').value = mov.monto;
             document.getElementById('concepto').value = mov.concepto;
             document.getElementById('categoria').value = mov.categoria;
             document.getElementById('tipo').value = mov.tipo;
-            
-            document.getElementById('btn-guardar').innerText = "Actualizar Registro";
+            document.getElementById('btn-guardar').innerText = "Actualizar";
             document.getElementById('btn-guardar').style.background = "#f39c12";
-            window.scrollTo(0,0); // Subir para que el usuario vea el formulario
+            document.getElementById('form-titulo').innerText = "Editando...";
+            navegar('formulario', document.querySelectorAll('.nav-btn')[1]);
         };
 
         window.borrarMovimiento = async (id) => {
-            if (confirm("¿Estás seguro de eliminar este registro?")) {
-                try {
-                    await deleteDoc(doc(db, "movimientos", id));
-                } catch (error) {
-                    alert("Error al borrar: " + error.message);
-                }
-            }
+            if (confirm("¿Eliminar registro?")) await deleteDoc(doc(db, "movimientos", id));
         };
 
         window.exportarCSV = () => {
             let csv = "Fecha,Concepto,Categoria,Tipo,Monto\n";
             movimientosActuales.forEach(m => csv += `${m.fecha},${m.concepto},${m.categoria},${m.tipo},${m.monto}\n`);
-            const link = document.createElement("a");
-            link.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
-            link.download = "Reporte_Finanzas.csv";
-            link.click();
+            window.open("data:text/csv;charset=utf-8," + encodeURI(csv));
         };
 
         function actualizarInterfaz(movs) {
             const lista = document.getElementById('tabla-cuerpo');
-            const listaCategorias = document.getElementById('lista-categorias-texto');
+            const listaCats = document.getElementById('lista-categorias-texto');
             let tin = 0, tout = 0, total = 0;
             const mesActual = new Date().getMonth() + 1;
             const categoriasGastos = {};
 
             lista.innerHTML = '';
-            listaCategorias.innerHTML = '';
+            listaCats.innerHTML = '';
 
             movs.forEach(m => {
                 const monto = parseFloat(m.monto);
@@ -159,12 +294,11 @@
                 total += (m.tipo === 'Entrada' ? monto : -monto);
 
                 lista.innerHTML += `<tr>
-                    <td>${m.fecha}</td>
-                    <td>${m.concepto}<br><small>${m.categoria}</small></td>
+                    <td><b>${m.concepto}</b><br><small>${m.fecha} · ${m.categoria}</small></td>
                     <td class="${m.tipo==='Entrada'?'tipo-entrada':'tipo-salida'}">$${monto.toFixed(2)}</td>
-                    <td style="white-space:nowrap;">
-                        <button onclick="prepararEdicion('${m.id}')" style="background:none; color:#1a73e8; padding:0; width:auto; margin-right:10px;">✏️</button>
-                        <button onclick="borrarMovimiento('${m.id}')" style="background:none; color:#e74c3c; padding:0; width:auto;">🗑️</button>
+                    <td style="text-align:right">
+                        <span onclick="prepararEdicion('${m.id}')" style="cursor:pointer; margin-right:10px;">✏️</span>
+                        <span onclick="borrarMovimiento('${m.id}')" style="cursor:pointer; color:#ff5252;">🗑️</span>
                     </td>
                 </tr>`;
             });
@@ -174,13 +308,15 @@
             document.getElementById('saldo-total').innerText = `$${total.toFixed(2)}`;
             
             for (const [nombre, valor] of Object.entries(categoriasGastos)) {
-                listaCategorias.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>${nombre}</span><strong>$${valor.toFixed(2)}</strong></div>`;
+                listaCats.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>${nombre}</span><strong>$${valor.toFixed(2)}</strong></div>`;
             }
+            ultimasCategorias = categoriasGastos;
             actualizarGrafica(categoriasGastos);
         }
 
         function actualizarGrafica(data) {
             const ctx = document.getElementById('miGrafica').getContext('2d');
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
             if (miGrafica) miGrafica.destroy();
             miGrafica = new Chart(ctx, {
                 type: 'doughnut',
@@ -188,73 +324,18 @@
                     labels: Object.keys(data),
                     datasets: [{
                         data: Object.values(data),
-                        backgroundColor: ['#4285F4', '#EA4335', '#FBBC05', '#34A853', '#8E44AD', '#F39C12']
+                        backgroundColor: ['#4285F4', '#EA4335', '#FBBC05', '#34A853', '#8E44AD', '#F39C12'],
+                        borderWidth: isDark ? 0 : 2
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } },
+                    cutout: '70%'
+                }
             });
         }
     </script>
-
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; padding: 15px; }
-        .container { max-width: 900px; margin: auto; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        input, select, button { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; }
-        button { background: #1a73e8; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:active { opacity: 0.8; }
-        .resumen-card { background: #1a73e8; color: white; text-align: center; }
-        .tipo-entrada { color: #2ecc71; } .tipo-salida { color: #e74c3c; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
-        .chart-container { height: 180px; position: relative; }
-        @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div id="vista-login" class="card" style="max-width: 400px; margin: 50px auto; display:none;">
-            <h2 style="text-align:center">🔐 Acceso</h2>
-            <input type="email" id="email" placeholder="Correo">
-            <input type="password" id="pass" placeholder="Contraseña">
-            <button onclick="login()">Entrar</button>
-        </div>
-
-        <div id="vista-app" style="display:none">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h3 style="margin:0">📊 Mis Finanzas</h3>
-                <button onclick="cerrarSesion()" style="width:auto; padding:5px 15px; background:#666;">Salir</button>
-            </div>
-
-            <div class="grid">
-                <div class="card">
-                    <select id="tipo"><option value="Salida">Gasto (-)</option><option value="Entrada">Ingreso (+)</option></select>
-                    <input type="number" id="monto" placeholder="Monto $">
-                    <input type="text" id="concepto" placeholder="Concepto">
-                    <input type="text" id="categoria" placeholder="Categoría">
-                    <button id="btn-guardar" onclick="guardarMovimiento()">Guardar</button>
-                    <button onclick="exportarCSV()" style="background:#1d6f42;">📥 Excel</button>
-                </div>
-                <div class="card">
-                    <div class="chart-container"><canvas id="miGrafica"></canvas></div>
-                    <div id="lista-categorias-texto" style="margin-top:10px; font-size:0.9em;"></div>
-                </div>
-            </div>
-
-            <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                <div class="card" style="text-align:center; padding:10px;">Ingresos<br><span id="res-in" class="tipo-entrada">$0</span></div>
-                <div class="card" style="text-align:center; padding:10px;">Gastos<br><span id="res-out" class="tipo-salida">$0</span></div>
-                <div class="card resumen-card" style="padding:10px;">Saldo<br><h3 id="saldo-total" style="margin:0">$0</h3></div>
-            </div>
-
-            <div class="card" style="overflow-x:auto;">
-                <table>
-                    <thead><tr><th>Fecha</th><th>Detalle</th><th>Monto</th><th>Acción</th></tr></thead>
-                    <tbody id="tabla-cuerpo"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
