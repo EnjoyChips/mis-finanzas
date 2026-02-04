@@ -15,7 +15,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, where, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, where, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCY3MpqeibDMdrRFMynB6FaIZ0UUcmqGYQ",
@@ -33,6 +33,7 @@
 
         let movimientosActuales = [];
         let miGrafica = null;
+        let idEdicion = null; // Variable para rastrear si estamos editando
 
         window.login = async () => {
             const email = document.getElementById('email').value;
@@ -57,33 +58,66 @@
         function cargarDatos(uid) {
             const q = query(collection(db, "movimientos"), where("userId", "==", uid), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
-                // Ahora guardamos también el ID del documento para poder borrarlo
                 movimientosActuales = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 actualizarInterfaz(movimientosActuales);
             });
         }
 
-        window.registrarMovimiento = async () => {
+        // --- FUNCIÓN PARA REGISTRAR O ACTUALIZAR ---
+        window.guardarMovimiento = async () => {
             const monto = parseFloat(document.getElementById('monto').value);
             const concepto = document.getElementById('concepto').value;
             const categoria = document.getElementById('categoria').value || "General";
+            const tipo = document.getElementById('tipo').value;
+            
             if (!concepto || isNaN(monto)) return alert("Datos inválidos");
 
-            await addDoc(collection(db, "movimientos"), {
-                userId: auth.currentUser.uid,
-                tipo: document.getElementById('tipo').value,
+            const datos = {
+                tipo: tipo,
                 monto: monto,
                 concepto: concepto,
                 categoria: categoria.trim(),
-                fecha: new Date().toISOString().split('T')[0],
-                timestamp: new Date(),
-                mes: new Date().getMonth() + 1
-            });
+            };
+
+            if (idEdicion) {
+                // Actualizar existente
+                await updateDoc(doc(db, "movimientos", idEdicion), datos);
+                idEdicion = null;
+                document.getElementById('btn-guardar').innerText = "Guardar";
+                document.getElementById('btn-guardar').style.background = "#1a73e8";
+            } else {
+                // Crear nuevo
+                await addDoc(collection(db, "movimientos"), {
+                    ...datos,
+                    userId: auth.currentUser.uid,
+                    fecha: new Date().toISOString().split('T')[0],
+                    timestamp: new Date(),
+                    mes: new Date().getMonth() + 1
+                });
+            }
+
+            // Limpiar campos
             document.getElementById('monto').value = '';
             document.getElementById('concepto').value = '';
+            document.getElementById('categoria').value = '';
         };
 
-        // --- FUNCIÓN PARA BORRAR ---
+        // --- PREPARAR EDICIÓN ---
+        window.prepararEdicion = (id) => {
+            const mov = movimientosActuales.find(m => m.id === id);
+            if (!mov) return;
+
+            idEdicion = id;
+            document.getElementById('monto').value = mov.monto;
+            document.getElementById('concepto').value = mov.concepto;
+            document.getElementById('categoria').value = mov.categoria;
+            document.getElementById('tipo').value = mov.tipo;
+            
+            document.getElementById('btn-guardar').innerText = "Actualizar Registro";
+            document.getElementById('btn-guardar').style.background = "#f39c12";
+            window.scrollTo(0,0); // Subir para que el usuario vea el formulario
+        };
+
         window.borrarMovimiento = async (id) => {
             if (confirm("¿Estás seguro de eliminar este registro?")) {
                 try {
@@ -124,12 +158,14 @@
                 }
                 total += (m.tipo === 'Entrada' ? monto : -monto);
 
-                // Tabla con botón de borrar
                 lista.innerHTML += `<tr>
                     <td>${m.fecha}</td>
                     <td>${m.concepto}<br><small>${m.categoria}</small></td>
                     <td class="${m.tipo==='Entrada'?'tipo-entrada':'tipo-salida'}">$${monto.toFixed(2)}</td>
-                    <td><button onclick="borrarMovimiento('${m.id}')" style="background:none; color:#e74c3c; padding:0; width:auto;">🗑️</button></td>
+                    <td style="white-space:nowrap;">
+                        <button onclick="prepararEdicion('${m.id}')" style="background:none; color:#1a73e8; padding:0; width:auto; margin-right:10px;">✏️</button>
+                        <button onclick="borrarMovimiento('${m.id}')" style="background:none; color:#e74c3c; padding:0; width:auto;">🗑️</button>
+                    </td>
                 </tr>`;
             });
 
@@ -166,7 +202,8 @@
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         input, select, button { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; }
-        button { background: #1a73e8; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button { background: #1a73e8; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:active { opacity: 0.8; }
         .resumen-card { background: #1a73e8; color: white; text-align: center; }
         .tipo-entrada { color: #2ecc71; } .tipo-salida { color: #e74c3c; }
         table { width: 100%; border-collapse: collapse; }
@@ -196,7 +233,7 @@
                     <input type="number" id="monto" placeholder="Monto $">
                     <input type="text" id="concepto" placeholder="Concepto">
                     <input type="text" id="categoria" placeholder="Categoría">
-                    <button onclick="registrarMovimiento()">Guardar</button>
+                    <button id="btn-guardar" onclick="guardarMovimiento()">Guardar</button>
                     <button onclick="exportarCSV()" style="background:#1d6f42;">📥 Excel</button>
                 </div>
                 <div class="card">
@@ -213,7 +250,7 @@
 
             <div class="card" style="overflow-x:auto;">
                 <table>
-                    <thead><tr><th>Fecha</th><th>Detalle</th><th>Monto</th><th></th></tr></thead>
+                    <thead><tr><th>Fecha</th><th>Detalle</th><th>Monto</th><th>Acción</th></tr></thead>
                     <tbody id="tabla-cuerpo"></tbody>
                 </table>
             </div>
