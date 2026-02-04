@@ -18,24 +18,24 @@
         :root {
             --primary: #1a73e8;
             --bg: #f0f2f5;
-            --card-bg: rgba(255, 255, 255, 0.9);
+            --card-bg: rgba(255, 255, 255, 0.92);
             --text-main: #333333;
             --text-sec: #666666;
             --border: #dddddd;
             --nav-bg: #ffffff;
-            /* Patrón SVG de billetes y monedas para modo claro */
-            --pattern: url("data:image/svg+xml,%3Csvg width='84' height='48' viewBox='0 0 84 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h12v6H0V0zm28 8h12v6H28V8zm14-8h12v6H42V0zm28 8h12v6H70V8zm-28 24h12v6H42v-6zm28 8h12v6H70v-6zM0 16h12v6H0v-6zm28 8h12v6H28v-6zM0 32h12v6H0v-6zm28 8h12v6H28v-6zM56 16h12v6H56v-6zm-28-8h12v6H28V8zm56 0h12v6H84V8zM56 32h12v6H56v-6zm28-8h12v6H84v-6z' fill='%231a73e8' fill-opacity='0.06' fill-rule='evenodd'/%3E%3C/svg%3E");
+            /* Estilo Wall Street - Modo Claro (Azul sutil) */
+            --pattern: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231a73e8' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
 
         [data-theme="dark"] {
             --bg: #121212;
-            --card-bg: rgba(30, 30, 30, 0.9);
+            --card-bg: rgba(30, 30, 30, 0.92);
             --text-main: #e0e0e0;
             --text-sec: #b0b0b0;
             --border: #333333;
             --nav-bg: #1e1e1e;
-            /* Patrón SVG para modo oscuro (más tenue) */
-            --pattern: url("data:image/svg+xml,%3Csvg width='84' height='48' viewBox='0 0 84 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h12v6H0V0zm28 8h12v6H28V8zm14-8h12v6H42V0zm28 8h12v6H70V8zm-28 24h12v6H42v-6zm28 8h12v6H70v-6zM0 16h12v6H0v-6zm28 8h12v6H28v-6zM0 32h12v6H0v-6zm28 8h12v6H28v-6zM56 16h12v6H56v-6zm-28-8h12v6H28V8zm56 0h12v6H84V8zM56 32h12v6H56v-6zm28-8h12v6H84v-6z' fill='%23ffffff' fill-opacity='0.04' fill-rule='evenodd'/%3E%3C/svg%3E");
+            /* Estilo Wall Street - Modo Oscuro (Blanco tenue) */
+            --pattern: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
 
         body { 
@@ -57,7 +57,6 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.1); 
             margin-bottom: 20px;
             border: 1px solid var(--border);
-            /* Efecto cristalizado para que resalte sobre el patrón */
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
         }
@@ -193,174 +192,4 @@
             document.querySelectorAll('.seccion-movil').forEach(s => s.classList.remove('active'));
             document.getElementById('sec-' + id).classList.add('active');
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            if(btn) btn.classList.add('active');
-        };
-
-        window.toggleTheme = () => {
-            const current = document.body.getAttribute('data-theme');
-            const target = current === 'dark' ? 'light' : 'dark';
-            document.body.setAttribute('data-theme', target);
-            localStorage.setItem('theme', target);
-            if(miGrafica) actualizarGrafica(ultimasCategorias);
-        };
-
-        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        document.body.setAttribute('data-theme', savedTheme);
-
-        window.login = async () => {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('pass').value;
-            try { await signInWithEmailAndPassword(auth, email, pass); } 
-            catch (error) { alert("Error: " + error.message); }
-        };
-
-        window.cerrarSesion = () => signOut(auth);
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('vista-login').style.display = 'none';
-                document.getElementById('vista-app').style.display = 'block';
-                if(window.innerWidth <= 768) document.getElementById('mobile-nav').style.display = 'flex';
-                cargarDatos(user.uid);
-            } else {
-                document.getElementById('vista-login').style.display = 'block';
-                document.getElementById('vista-app').style.display = 'none';
-                document.getElementById('mobile-nav').style.display = 'none';
-            }
-        });
-
-        function cargarDatos(uid) {
-            const q = query(collection(db, "movimientos"), where("userId", "==", uid), orderBy("timestamp", "desc"));
-            onSnapshot(q, (snapshot) => {
-                movimientosActuales = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                actualizarInterfaz(movimientosActuales);
-            });
-        }
-
-        window.guardarMovimiento = async () => {
-            const monto = parseFloat(document.getElementById('monto').value);
-            const concepto = document.getElementById('concepto').value;
-            const categoria = document.getElementById('categoria').value || "General";
-            const tipo = document.getElementById('tipo').value;
-            if (!concepto || isNaN(monto)) return alert("Datos inválidos");
-
-            const datos = { tipo, monto, concepto, categoria: categoria.trim() };
-
-            if (idEdicion) {
-                await updateDoc(doc(db, "movimientos", idEdicion), datos);
-                idEdicion = null;
-                document.getElementById('btn-guardar').innerText = "Guardar";
-                document.getElementById('btn-guardar').style.background = "var(--primary)";
-                document.getElementById('form-titulo').innerText = "Nuevo Registro";
-            } else {
-                await addDoc(collection(db, "movimientos"), {
-                    ...datos,
-                    userId: auth.currentUser.uid,
-                    fecha: new Date().toISOString().split('T')[0],
-                    timestamp: new Date(),
-                    mes: new Date().getMonth() + 1
-                });
-            }
-            document.getElementById('monto').value = '';
-            document.getElementById('concepto').value = '';
-            document.getElementById('categoria').value = '';
-            if(window.innerWidth <= 768) navegar('resumen', document.querySelector('.nav-btn'));
-        };
-
-        window.prepararEdicion = (id) => {
-            const mov = movimientosActuales.find(m => m.id === id);
-            idEdicion = id;
-            document.getElementById('monto').value = mov.monto;
-            document.getElementById('concepto').value = mov.concepto;
-            document.getElementById('categoria').value = mov.categoria;
-            document.getElementById('tipo').value = mov.tipo;
-            document.getElementById('btn-guardar').innerText = "Actualizar";
-            document.getElementById('btn-guardar').style.background = "#f39c12";
-            document.getElementById('form-titulo').innerText = "Editando...";
-            if(window.innerWidth <= 768) navegar('formulario', document.querySelectorAll('.nav-btn')[1]);
-        };
-
-        window.borrarMovimiento = async (id) => {
-            if (confirm("¿Eliminar registro?")) await deleteDoc(doc(db, "movimientos", id));
-        };
-
-        window.exportarCSV = () => {
-            let csv = "Fecha,Concepto,Categoria,Tipo,Monto\n";
-            movimientosActuales.forEach(m => csv += `${m.fecha},${m.concepto},${m.categoria},${m.tipo},${m.monto}\n`);
-            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csv);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "finanzas.csv");
-            document.body.appendChild(link);
-            link.click();
-        };
-
-        function actualizarInterfaz(movs) {
-            const lista = document.getElementById('tabla-cuerpo');
-            const listaCats = document.getElementById('lista-categorias-texto');
-            let tin = 0, tout = 0, total = 0;
-            const mesActual = new Date().getMonth() + 1;
-            const categoriasGastos = {};
-
-            lista.innerHTML = '';
-            listaCats.innerHTML = '';
-
-            movs.forEach(m => {
-                const monto = parseFloat(m.monto);
-                if(m.mes === mesActual) {
-                    if(m.tipo === 'Entrada') tin += monto;
-                    else {
-                        tout += monto;
-                        categoriasGastos[m.categoria] = (categoriasGastos[m.categoria] || 0) + monto;
-                    }
-                }
-                total += (m.tipo === 'Entrada' ? monto : -monto);
-
-                lista.innerHTML += `<tr>
-                    <td><b>${m.concepto}</b><br><small>${m.fecha} · ${m.categoria}</small></td>
-                    <td class="${m.tipo==='Entrada'?'tipo-entrada':'tipo-salida'}">$${monto.toFixed(2)}</td>
-                    <td style="text-align:right">
-                        <span onclick="prepararEdicion('${m.id}')" style="cursor:pointer; margin-right:10px;">✏️</span>
-                        <span onclick="borrarMovimiento('${m.id}')" style="cursor:pointer; color:#ff5252;">🗑️</span>
-                    </td>
-                </tr>`;
-            });
-
-            document.getElementById('res-in').innerText = `+$${tin.toFixed(2)}`;
-            document.getElementById('res-out').innerText = `-$${tout.toFixed(2)}`;
-            document.getElementById('saldo-total').innerText = `$${total.toFixed(2)}`;
-            
-            for (const [nombre, valor] of Object.entries(categoriasGastos)) {
-                listaCats.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>${nombre}</span><strong>$${valor.toFixed(2)}</strong></div>`;
-            }
-            ultimasCategorias = categoriasGastos;
-            actualizarGrafica(categoriasGastos);
-        }
-
-        function actualizarGrafica(data) {
-            const canvas = document.getElementById('miGrafica');
-            if(!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const isDark = document.body.getAttribute('data-theme') === 'dark';
-            if (miGrafica) miGrafica.destroy();
-            miGrafica = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(data),
-                    datasets: [{
-                        data: Object.values(data),
-                        backgroundColor: ['#4285F4', '#EA4335', '#FBBC05', '#34A853', '#8E44AD', '#F39C12'],
-                        borderWidth: isDark ? 0 : 2
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } },
-                    cutout: '70%'
-                }
-            });
-        }
-    </script>
-</body>
-</html>
+            if(btn) btn
