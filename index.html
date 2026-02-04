@@ -18,38 +18,47 @@
         :root {
             --primary: #1a73e8;
             --bg: #f4f7f6;
-            --card-bg: #ffffff;
+            --card-bg: rgba(255, 255, 255, 0.95); /* Un poco de transparencia */
             --text-main: #333333;
             --text-sec: #666666;
             --border: #dddddd;
             --nav-bg: #ffffff;
+            /* URL del patrón de monedas/dinero */
+            --pattern: url('https://www.transparenttextures.com/patterns/financial-social-media.png');
         }
 
         [data-theme="dark"] {
             --bg: #121212;
-            --card-bg: #1e1e1e;
+            --card-bg: rgba(30, 30, 30, 0.95);
             --text-main: #e0e0e0;
             --text-sec: #b0b0b0;
             --border: #333333;
             --nav-bg: #1e1e1e;
+            /* Patrón más oscuro y sutil */
+            --pattern: url('https://www.transparenttextures.com/patterns/stardust.png');
         }
 
         body { 
             font-family: 'Segoe UI', system-ui, sans-serif; 
-            background: var(--bg); 
+            background-color: var(--bg);
+            background-image: var(--pattern);
+            background-attachment: fixed; /* El fondo no se mueve al scrollear */
             color: var(--text-main);
             margin: 0; 
             transition: 0.3s; 
         }
         
         .container { max-width: 1100px; margin: auto; padding: 15px; }
+        
         .card { 
             background: var(--card-bg); 
             padding: 20px; 
             border-radius: 15px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
             margin-bottom: 20px;
             border: 1px solid var(--border);
+            backdrop-filter: blur(8px); /* Efecto cristal esmerilado */
+            -webkit-backdrop-filter: blur(8px);
         }
         
         input, select, button { 
@@ -59,23 +68,25 @@
         }
         button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; }
         
-        .tipo-entrada { color: #2ecc71; } .tipo-salida { color: #ff5252; }
+        .tipo-entrada { color: #2ecc71; text-shadow: 0 0 1px rgba(0,0,0,0.1); } 
+        .tipo-salida { color: #ff5252; text-shadow: 0 0 1px rgba(0,0,0,0.1); }
+        
         table { width: 100%; border-collapse: collapse; }
         td { padding: 12px 8px; border-bottom: 1px solid var(--border); }
 
         /* --- LAYOUT DE ESCRITORIO --- */
         .desktop-layout {
             display: grid;
-            grid-template-columns: 1fr 1fr; /* Dos columnas */
+            grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
-        .full-width { grid-column: span 2; } /* Historial abajo ocupando todo el ancho */
+        .full-width { grid-column: span 2; }
 
         .mobile-nav { display: none; }
 
         /* --- RESPONSIVO PARA MÓVIL --- */
         @media (max-width: 768px) {
-            .desktop-layout { display: block; } /* Quitar grid en móvil */
+            .desktop-layout { display: block; }
             .seccion-movil { display: none; }
             .seccion-movil.active { display: block; }
             body { padding-bottom: 80px; }
@@ -102,7 +113,6 @@
         </div>
 
         <div id="vista-app" style="display:none">
-            
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h3 style="margin:0">📊 Mis Finanzas</h3>
                 <div>
@@ -118,7 +128,6 @@
             </div>
 
             <div class="desktop-layout">
-                
                 <div id="sec-formulario" class="seccion-movil">
                     <div class="card">
                         <h3 id="form-titulo" style="margin-top:0">Nuevo Registro</h3>
@@ -147,15 +156,18 @@
                         </table>
                     </div>
                 </div>
+            </div> 
+        </div> 
+    </div> 
 
-            </div> </div> </div> <nav class="mobile-nav" id="mobile-nav" style="display:none;">
+    <nav class="mobile-nav" id="mobile-nav" style="display:none;">
         <button class="nav-btn active" onclick="navegar('resumen', this)"><b>🏠</b>Inicio</button>
         <button class="nav-btn" onclick="navegar('formulario', this)"><b>➕</b>Nuevo</button>
         <button class="nav-btn" onclick="navegar('lista', this)"><b>📋</b>Lista</button>
     </nav>
 
     <script type="module">
-        // [TU CÓDIGO DE FIREBASE Y LÓGICA SE MANTIENE IGUAL]
+        // [LÓGICA DE FIREBASE SIN CAMBIOS PARA MANTENER LA FUNCIONALIDAD]
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, where, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -179,7 +191,7 @@
         let ultimasCategorias = {};
 
         window.navegar = (id, btn) => {
-            if(window.innerWidth > 768) return; // No navegar en escritorio
+            if(window.innerWidth > 768) return;
             document.querySelectorAll('.seccion-movil').forEach(s => s.classList.remove('active'));
             document.getElementById('sec-' + id).classList.add('active');
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
